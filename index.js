@@ -48,6 +48,20 @@ async function scrapeArticle({
     }
 }
 
+async function prepareEpub() {
+    const scrapedArticles = await Promise.all(
+        blogconfig.blogs.map((b) => scrapeArticle(b))
+    );
+    /** @type {import('epub-gen').Chapter[]} */
+    const chapters = [];
+    scrapedArticles.forEach((article) => {
+        if (article) {
+            chapters.push(article);
+        }
+    });
+    return chapters;
+}
+
 /**
  *
  * @param {string} title
@@ -63,6 +77,28 @@ async function generateEpub(title, chapters, output) {
         output,
     };
     await new Epub(options);
+}
+
+/**
+ * @param {string} fileName
+ * @param {string} outputPath
+ */
+async function sendEpub(fileName, outputPath) {
+    const emailCredentials = {
+        user: process.env.EMAIL_USER || '',
+        pass: process.env.EMAIL_PASSWORD || '',
+    };
+    const fileAttachement = {
+        filename: fileName,
+        path: outputPath,
+        contentType: 'application/epub',
+    };
+    await sendFile(
+        process.env.EMAIL_PROVIDER || '',
+        emailCredentials,
+        process.env.EMAIL_RECIPIENTS || '',
+        [fileAttachement]
+    );
 }
 
 /**
@@ -96,32 +132,9 @@ async function run() {
     const articleTitle = `${dateTimeStamp} Blog Feed`;
     const fileName = `${dateTimeStamp}_BlogFeed.epub`;
     const outputPath = `./out/${fileName}`;
-    const scrapedArticles = await Promise.all(
-        blogconfig.blogs.map((b) => scrapeArticle(b))
-    );
-    /** @type {import('epub-gen').Chapter[]} */
-    const chapters = [];
-    scrapedArticles.forEach((article) => {
-        if (article) {
-            chapters.push(article);
-        }
-    });
+    const chapters = await prepareEpub();
     await generateEpub(articleTitle, chapters, outputPath);
-    const emailCredentials = {
-        user: process.env.EMAIL_USER || '',
-        pass: process.env.EMAIL_PASSWORD || '',
-    };
-    const fileAttachement = {
-        filename: fileName,
-        path: outputPath,
-        contentType: 'application/epub',
-    };
-    await sendFile(
-        process.env.EMAIL_PROVIDER || '',
-        emailCredentials,
-        process.env.EMAIL_RECIPIENTS || '',
-        [fileAttachement]
-    );
+    await sendEpub(fileName, outputPath);
 }
 
 run();

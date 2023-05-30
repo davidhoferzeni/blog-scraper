@@ -3,6 +3,7 @@ import Epub from 'epub-gen';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import blogconfig from './blogconfig.json' assert { type: 'json' };
+import { XMLParser } from 'fast-xml-parser';
 
 /**
  * My cool function.
@@ -17,12 +18,15 @@ async function scrapeArticle(
     { url, articleSelector, titleSelector, contentSelector },
     browser
 ) {
+    let closeBrowser = false;
     try {
         if (!browser) {
+            closeBrowser = true;
             browser = await puppeteer.launch({ headless: 'new' });
         }
         const page = await browser.newPage();
         page.setDefaultNavigationTimeout(2 * 60 * 1000);
+        console.log(`Navigating to ${url}`);
         await page.goto(url);
         await page.waitForSelector(titleSelector);
         const title =
@@ -36,6 +40,7 @@ async function scrapeArticle(
             elements.map((el) => el.outerHTML)
         );
         const data = paragraphs?.join('\n') || 'No conent';
+        page.close();
         return {
             title,
             data,
@@ -43,15 +48,57 @@ async function scrapeArticle(
     } catch (e) {
         console.error('scrape failed', e);
     } finally {
-        await browser?.close();
+        console.log(`Finished scraping ${url}`);
+        if (closeBrowser) {
+            await browser?.close();
+        }
     }
 }
 
+/**
+ * @param {string} rss
+ */
+async function getArticleLinks(rss) {
+    const rssContent = await fetch(rss);
+    const xmlContents = await rssContent.text();
+    const parser = new XMLParser();
+    let jObj = parser.parse(xmlContents);
+    /**
+     * @typedef RssItem
+     * @prop {string} title
+     * @prop {string} link
+     * @prop {string} description
+     * @prop {string} pubDate
+     *  */
+    /**
+     * @type {RssItem[]}
+     */
+    const articleList = jObj.rss.channel.item;
+    return articleList.map((i) => i.link);
+}
+
 async function prepareEpub() {
-    const browser = await puppeteer.launch({ headless: 'new' });
-    const scrapedArticles = await Promise.all(
-        blogconfig.blogs.map((b) => scrapeArticle(b, browser))
+    const articleLinkLists = await Promise.all(
+        blogconfig.blogs.flatMap(async (b) => {
+            const articleLinks = await getArticleLinks(b.url);
+            console.log(`Found ${articleLinks.length} for blog ${b.name}!`);
+            const filteredArticleLinks = articleLinks.slice(0, 5);
+            console.log(`Only exporting last 5 article from each blog!`);
+            return filteredArticleLinks.map((l) => {
+                const blogArticle = Object.assign({}, b);
+                blogArticle.url = l;
+                return blogArticle;
+            });
+        })
     );
+    const articleLinks = articleLinkLists.flat();
+    const browser = await puppeteer.launch({ headless: 'new' });
+    const scrapedArticles = [];
+    for await (const a of articleLinks) {
+        const articleContent = await scrapeArticle(a, browser);
+        scrapedArticles.push(articleContent);
+    }
+    browser.close();
     /** @type {import('epub-gen').Chapter[]} */
     const chapters = [];
     scrapedArticles.forEach((article) => {
@@ -76,6 +123,7 @@ async function generateEpub(title, chapters, output) {
         verbose: false,
         output,
     };
+    console.log(`Creating new epub file ${title} at ${output}`);
     await new Epub(options);
 }
 
@@ -84,6 +132,7 @@ async function generateEpub(title, chapters, output) {
  * @param {string} outputPath
  */
 async function sendEpub(fileName, outputPath) {
+    console.log('Sending file via mail');
     const emailCredentials = {
         user: process.env.EMAIL_USER || '',
         pass: process.env.EMAIL_PASSWORD || '',
@@ -134,7 +183,7 @@ async function run() {
     const outputPath = `./out/${fileName}`;
     const chapters = await prepareEpub();
     await generateEpub(articleTitle, chapters, outputPath);
-    //await sendEpub(fileName, outputPath);
+    await sendEpub(fileName, outputPath);
 }
 
 run();

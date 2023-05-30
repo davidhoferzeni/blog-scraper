@@ -2,14 +2,14 @@
     "blogs": [
         {
             "name": "Svelte Blog",
-            "url": "https://svelte.dev/blog/zero-config-type-safety",
+            "url": "https://svelte.dev/blog/rss.xml",
             "titleSelector": "h1",
             "articleSelector": "article",
             "contentSelector": "*:not(h1)"
         },
         {
             "name": "Next.js Blog",
-            "url": "https://nextjs.org/blog/next-13-4",
+            "url": "https://nextjs.org/feed.xml",
             "titleSelector": "h1",
             "articleSelector": "main",
             "contentSelector": "*"

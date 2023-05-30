@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import puppeteer, { Browser } from 'puppeteer';
 import Epub from 'epub-gen';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
@@ -6,22 +6,21 @@ import blogconfig from './blogconfig.json' assert { type: 'json' };
 
 /**
  * My cool function.
- *
  * @param {Object} b - Blog object.
  * @param {string} b.url
  * @param {string} b.titleSelector
  * @param {string} b.articleSelector
  * @param {string} b.contentSelector
+ * @param {Browser} [browser]
  */
-async function scrapeArticle({
-    url,
-    articleSelector,
-    titleSelector,
-    contentSelector,
-}) {
-    let browser;
+async function scrapeArticle(
+    { url, articleSelector, titleSelector, contentSelector },
+    browser
+) {
     try {
-        browser = await puppeteer.launch({ headless: 'new' });
+        if (!browser) {
+            browser = await puppeteer.launch({ headless: 'new' });
+        }
         const page = await browser.newPage();
         page.setDefaultNavigationTimeout(2 * 60 * 1000);
         await page.goto(url);
@@ -49,8 +48,9 @@ async function scrapeArticle({
 }
 
 async function prepareEpub() {
+    const browser = await puppeteer.launch({ headless: 'new' });
     const scrapedArticles = await Promise.all(
-        blogconfig.blogs.map((b) => scrapeArticle(b))
+        blogconfig.blogs.map((b) => scrapeArticle(b, browser))
     );
     /** @type {import('epub-gen').Chapter[]} */
     const chapters = [];
@@ -134,7 +134,7 @@ async function run() {
     const outputPath = `./out/${fileName}`;
     const chapters = await prepareEpub();
     await generateEpub(articleTitle, chapters, outputPath);
-    await sendEpub(fileName, outputPath);
+    //await sendEpub(fileName, outputPath);
 }
 
 run();

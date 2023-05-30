@@ -4,6 +4,45 @@ import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import blogconfig from './blogconfig.json' assert { type: 'json' };
 import { XMLParser } from 'fast-xml-parser';
+import fs from 'fs';
+import path from 'path';
+import https from 'https';
+import { randomUUID } from 'crypto';
+
+/**
+ * @param {string} uri
+ * @param {string} out
+ */
+async function downloadFile(uri, out) {
+    const parentDirectory = path.dirname(out);
+    if (!fs.existsSync(parentDirectory)) {
+        fs.mkdirSync(parentDirectory, { recursive: true });
+    }
+    const request = await https.get(uri, function (response) {
+        const fileType = response.headers['content-type']
+            ?.toString()
+            .replace('image/', '');
+        const file = fs.createWriteStream(`${out}.${fileType}`);
+        response.pipe(file);
+        // after download completed close filestream
+        file.on('finish', () => {
+            file.close();
+            console.log('Download Completed');
+        });
+    });
+    console.log('done now');
+}
+/**
+ * @param {string | URL} url
+ * @param {string} href
+ */
+async function downloadImageFromPage(url, href) {
+    const webpageUrl = new URL(href, url);
+    const imageName = randomUUID();
+    const outPath = path.join('./out/images', imageName);
+    await downloadFile(webpageUrl.toString(), outPath);
+    return imageName;
+}
 
 /**
  * My cool function.
@@ -186,4 +225,8 @@ async function run() {
     await sendEpub(fileName, outputPath);
 }
 
-run();
+// run();
+downloadImageFromPage(
+    'https://nextjs.org/blog/next-13',
+    '/_next/image?url=%2Fstatic%2Fblog%2Fnext-13%2Fcolocating-assets-in-the-app-directory.png&w=3840&q=75'
+);

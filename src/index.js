@@ -21,18 +21,18 @@ async function downloadFile(uri, out) {
     }
     return new Promise((requestComplete) => {
         https.get(uri, async function (response) {
-        const fileType = response.headers['content-type']
-            ?.toString()
-            .replace('image/', '');
+            const fileType = response.headers['content-type']
+                ?.toString()
+                .replace('image/', '');
             const fileName = `${out}.${fileType}`;
             const file = fs.createWriteStream(fileName);
-        response.pipe(file);
-        file.on('finish', () => {
-            file.close();
-            console.log('Download Completed');
+            response.pipe(file);
+            file.on('finish', () => {
+                file.close();
+                console.log('Download Completed');
                 requestComplete(fileName);
+            });
         });
-    });
     });
 }
 /**
@@ -252,7 +252,7 @@ async function run() {
     const outputPath = `./out/${fileName}`;
     const chapters = await prepareEpub();
     await generateEpub(articleTitle, chapters, outputPath);
-    await sendEpub(fileName, outputPath);
+    //await sendEpub(fileName, outputPath);
 }
 
 run();

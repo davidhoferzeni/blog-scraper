@@ -9,7 +9,7 @@
     "type": "module",
     "name": "blog-scraper",
     "version": "1.0.0",
-    "main": "index.js",
+    "main": "src/index.js",
     "devDependencies": {},
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1"

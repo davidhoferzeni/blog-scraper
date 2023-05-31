@@ -178,7 +178,7 @@ async function prepareEpub() {
  *
  * @param {string} title
  * @param {import("epub-gen").Chapter[]} chapters
- * @param {string} [output]
+ * @param {string} output
  * @returns
  */
 async function generateEpub(title, chapters, output) {
@@ -189,6 +189,10 @@ async function generateEpub(title, chapters, output) {
         output,
     };
     console.log(`Creating new epub file ${title} at ${output}`);
+    const parentDirectory = path.dirname(output);
+    if (!fs.existsSync(parentDirectory)) {
+        fs.mkdirSync(parentDirectory, { recursive: true });
+    }
     await new Epub(options);
 }
 

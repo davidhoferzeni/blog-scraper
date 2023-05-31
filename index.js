@@ -1,4 +1,4 @@
-import puppeteer, { Browser } from 'puppeteer';
+import puppeteer, { Browser, ElementHandle } from 'puppeteer';
 import Epub from 'epub-gen';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
@@ -47,6 +47,22 @@ async function downloadImageFromPage(url, href, out) {
     await downloadFile(webpageUrl.toString(), outPath);
     return outPath;
 }
+
+/**
+ * @param {string} url
+ * @param {ElementHandle} article
+ */
+async function extractImages(url, article) {
+    const images = await article.$$eval(
+        'img',
+        (imageElements, currentUrl) => {
+            imageElements.forEach((imageElement) => {
+                const webpageUrl = new URL(imageElement.src, currentUrl);
+                imageElement.src = webpageUrl.toString();
+            });
+        },
+        url
+    );
 }
 
 /**
@@ -80,10 +96,15 @@ async function scrapeArticle(
             )) || 'No title';
         await page.waitForSelector(articleSelector);
         const article = await page.$(articleSelector);
-        const paragraphs = await article?.$$eval(contentSelector, (elements) =>
-            elements.map((el) => el.outerHTML)
+        if (!article) {
+            return { title, data: 'No content.' };
+        }
+        await extractImages(url, article);
+        const paragraphs = await article.$$eval(
+            contentSelector,
+            (contentList) => contentList.map((content) => content.outerHTML)
         );
-        const data = paragraphs?.join('\n') || 'No conent';
+        const data = paragraphs.join('\n') || 'No conent';
         page.close();
         return {
             title,
@@ -230,8 +251,4 @@ async function run() {
     await sendEpub(fileName, outputPath);
 }
 
-// run();
-downloadImageFromPage(
-    'https://nextjs.org/blog/next-13',
-    '/_next/image?url=%2Fstatic%2Fblog%2Fnext-13%2Fcolocating-assets-in-the-app-directory.png&w=3840&q=75'
-);
+run();

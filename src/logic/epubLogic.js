@@ -149,5 +149,5 @@ export async function generateEpub(title, chapters, output) {
     if (!fs.existsSync(parentDirectory)) {
         fs.mkdirSync(parentDirectory, { recursive: true });
     }
-    await new Epub(options);
+    await new Epub(options).promise;
 }

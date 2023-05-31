@@ -18,19 +18,20 @@ async function downloadFile(uri, out) {
     if (!fs.existsSync(parentDirectory)) {
         fs.mkdirSync(parentDirectory, { recursive: true });
     }
-    const request = await https.get(uri, function (response) {
+    await new Promise((requestComplete) => {
+        https.get(uri, async function (response) {
         const fileType = response.headers['content-type']
             ?.toString()
             .replace('image/', '');
         const file = fs.createWriteStream(`${out}.${fileType}`);
         response.pipe(file);
-        // after download completed close filestream
         file.on('finish', () => {
             file.close();
             console.log('Download Completed');
+                requestComplete(true);
         });
     });
-    console.log('done now');
+    });
 }
 /**
  * @param {string | URL} url

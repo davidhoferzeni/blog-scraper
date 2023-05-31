@@ -12,23 +12,25 @@ import { randomUUID } from 'crypto';
 /**
  * @param {string} uri
  * @param {string} out
+ * @returns {Promise<string>}
  */
 async function downloadFile(uri, out) {
     const parentDirectory = path.dirname(out);
     if (!fs.existsSync(parentDirectory)) {
         fs.mkdirSync(parentDirectory, { recursive: true });
     }
-    await new Promise((requestComplete) => {
+    return new Promise((requestComplete) => {
         https.get(uri, async function (response) {
         const fileType = response.headers['content-type']
             ?.toString()
             .replace('image/', '');
-        const file = fs.createWriteStream(`${out}.${fileType}`);
+            const fileName = `${out}.${fileType}`;
+            const file = fs.createWriteStream(fileName);
         response.pipe(file);
         file.on('finish', () => {
             file.close();
             console.log('Download Completed');
-                requestComplete(true);
+                requestComplete(fileName);
         });
     });
     });
@@ -36,13 +38,15 @@ async function downloadFile(uri, out) {
 /**
  * @param {string | URL} url
  * @param {string} href
+ * @param {string} out
  */
-async function downloadImageFromPage(url, href) {
+async function downloadImageFromPage(url, href, out) {
     const webpageUrl = new URL(href, url);
     const imageName = randomUUID();
-    const outPath = path.join('./out/images', imageName);
+    const outPath = path.join(out, imageName);
     await downloadFile(webpageUrl.toString(), outPath);
-    return imageName;
+    return outPath;
+}
 }
 
 /**

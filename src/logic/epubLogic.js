@@ -28,12 +28,12 @@ async function updateImages(url, article) {
  * @param {string} b.url
  * @param {string} b.titleSelector
  * @param {string} b.articleSelector
- * @param {string} b.contentSelector
+ * @param {string} [b.contentFilter]
  * @param {Browser} [browser]
  */
 
 async function scrapeArticle(
-    { url, articleSelector, titleSelector, contentSelector },
+    { url, articleSelector, titleSelector, contentFilter },
     browser
 ) {
     let closeBrowser = false;
@@ -58,11 +58,16 @@ async function scrapeArticle(
             return { title, data: 'No content.' };
         }
         await updateImages(url, article);
-        const paragraphs = await article.$$eval(
-            contentSelector,
-            (contentList) => contentList.map((content) => content.outerHTML)
-        );
-        const data = paragraphs.join('\n') || 'No conent';
+        const data = await article.evaluate((a, filter) => {
+            // remove unwanted elements here!
+            if (filter) {
+                var elements = document.querySelectorAll(filter);
+                elements.forEach((e) => {
+                    e.parentNode?.removeChild(e);
+                });
+            }
+            return a.outerHTML;
+        }, contentFilter);
         page.close();
         return {
             title,

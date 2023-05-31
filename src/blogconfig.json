@@ -5,14 +5,13 @@
             "url": "https://svelte.dev/blog/rss.xml",
             "titleSelector": "h1",
             "articleSelector": "article",
-            "contentSelector": "*:not(h1)"
+            "contentFilter": "h1"
         },
         {
             "name": "Next.js Blog",
             "url": "https://nextjs.org/feed.xml",
             "titleSelector": "h1",
-            "articleSelector": "main",
-            "contentSelector": "*"
+            "articleSelector": "main"
         }
     ]
 }
